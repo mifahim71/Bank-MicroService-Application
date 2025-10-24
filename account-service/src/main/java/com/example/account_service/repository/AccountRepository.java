@@ -2,6 +2,7 @@ package com.example.account_service.repository;
 
 import com.example.account_service.entities.Account;
 import com.example.account_service.enums.AccountType;
+import com.example.account_service.enums.Status;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -18,5 +19,11 @@ public interface AccountRepository extends JpaRepository<Account, UUID> {
 
     boolean existsByUserIdAndAccountType(String userId, AccountType accountType);
 
+    boolean existsByUserIdAndAccountNumberAndStatus(String userId, String accountNumber, Status active);
+
+    boolean existsByAccountNumberAndStatus(String accountNumber, Status status);
+
     List<Account> findByUserId(String userId);
+
+
 }

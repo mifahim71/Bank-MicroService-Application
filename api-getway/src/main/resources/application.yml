@@ -33,3 +33,10 @@ spring:
             - Path=/account/**
           filters:
             - JwtValidation
+
+        - id: transaction-service-route
+          uri: http://localhost:4004
+          predicates:
+            - Path=/transaction/**
+          filters:
+            - JwtValidation

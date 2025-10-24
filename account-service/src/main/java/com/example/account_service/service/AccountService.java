@@ -1,5 +1,6 @@
 package com.example.account_service.service;
 
+import com.example.account_service.client.TransactionClient;
 import com.example.account_service.dto.*;
 import com.example.account_service.entities.Account;
 import com.example.account_service.enums.Status;
@@ -8,6 +9,7 @@ import com.example.account_service.exceptions.AccountNotFoundException;
 import com.example.account_service.exceptions.AccountWithThisUserIdAndAccountTypeAlreadExistsException;
 import com.example.account_service.mapper.AccountMapper;
 import com.example.account_service.repository.AccountRepository;
+import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,8 @@ public class AccountService {
 
     private final AccountMapper accountMapper;
 
+    private final TransactionClient transactionClient;
+
     public AccountCreateResponseDto createAccount(AccountCreateRequestDto requestDto, String userId) {
 
         if (accountRepository.existsByUserIdAndAccountType(userId, requestDto.getAccountType())){
@@ -31,7 +35,7 @@ public class AccountService {
         Account account = Account.builder()
                 .accountNumber("ACCT" + userId.substring(0, 4).toUpperCase() + System.currentTimeMillis() % 100)
                 .accountType(requestDto.getAccountType())
-                .balance(requestDto.getInitialDeposit())
+                .balance(0.0)
                 .userId(userId)
                 .status(Status.ACTIVE)
                 .createdAt(LocalDateTime.now())
@@ -39,7 +43,11 @@ public class AccountService {
 
         Account savedAccount = accountRepository.save(account);
 
-        return accountMapper.toAccountCreateResponseDto(savedAccount);
+        transactionClient.deposit(savedAccount.getAccountNumber(), requestDto.getInitialDeposit());
+
+        AccountCreateResponseDto responseDto = accountMapper.toAccountCreateResponseDto(savedAccount);
+        responseDto.setBalance(requestDto.getInitialDeposit());
+        return responseDto;
     }
 
     public AccountResponseDto getAccountByAccountNumber(String accountNumber, String userId) {
@@ -70,5 +78,59 @@ public class AccountService {
         Account savedAccount = accountRepository.save(account);
 
         return new AccountStatusUpdateResponseDto("Account status "+savedAccount.getStatus().toString()+" successfully");
+    }
+
+    public Boolean getIfAccountExistOfUser(String userId, String accountNumber) {
+
+        return accountRepository.existsByUserIdAndAccountNumberAndStatus(userId, accountNumber, Status.ACTIVE);
+    }
+
+    public Boolean getIfAccountExistAndActive(String accountNumber) {
+
+        return accountRepository.existsByAccountNumberAndStatus(accountNumber, Status.ACTIVE);
+    }
+
+    public Boolean getIfValidBalance(Double amount, String accountNumber){
+
+        Account account = accountRepository.findByAccountNumber(accountNumber).orElse(null);
+        if (account == null){
+            return false;
+        }
+
+        return account.getBalance() >= amount;
+    }
+
+
+
+    @Transactional
+    public void completeTransaction(String fromAccountNumber, String toAccountNumber, Double amount) {
+
+        Account fromAccount = accountRepository.findByAccountNumber(fromAccountNumber).orElseThrow(() -> new AccountNotFoundException("Sender account not found"));
+
+        fromAccount.setBalance(fromAccount.getBalance() - amount);
+        accountRepository.save(fromAccount);
+
+
+        Account toAccount = accountRepository.findByAccountNumber(toAccountNumber).orElseThrow(() -> new AccountNotFoundException("Receiver Account not found"));
+
+        toAccount.setBalance(toAccount.getBalance() + amount);
+        accountRepository.save(toAccount);
+
+    }
+
+    public void deposit(String accountNumber, Double amount) {
+
+        Account account = accountRepository.findByAccountNumber(accountNumber).orElseThrow(() -> new AccountNotFoundException("Deposit account not found"));
+        account.setBalance(account.getBalance() + amount);
+        accountRepository.save(account);
+
+    }
+
+    public void withdraw(String accountNumber, Double amount) {
+
+        Account account = accountRepository.findByAccountNumber(accountNumber).orElseThrow(() -> new AccountNotFoundException("withdraw account not found"));
+        account.setBalance(account.getBalance() - amount);
+        accountRepository.save(account);
+
     }
 }

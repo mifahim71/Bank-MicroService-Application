@@ -69,4 +69,58 @@ public class AccountController {
         return ResponseEntity.ok().body(responseDto);
     }
 
+    @GetMapping("/checkIfAccountExistOfUser")
+    public ResponseEntity<Boolean> checkIfAccountExistOfUser(
+            @RequestParam String userId,
+            @RequestParam String accountNumber
+    ){
+        Boolean result = accountService.getIfAccountExistOfUser(userId, accountNumber);
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/checkIfAccountExistAndActive")
+    public ResponseEntity<Boolean> checkIfAccountExistAndActive(
+            @RequestParam String accountNumber
+    ){
+        Boolean result = accountService.getIfAccountExistAndActive(accountNumber);
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/checkIfValidBalance")
+    public ResponseEntity<Boolean> checkIfValidBalance(
+            @RequestParam Double amount,
+            @RequestParam String accountNumber
+
+    ){
+        Boolean result = accountService.getIfValidBalance(amount, accountNumber);
+        return ResponseEntity.ok(result);
+    }
+
+    @PutMapping("/complete-transaction")
+    public ResponseEntity<String> reduceBalance(
+            @RequestParam String fromAccountNumber,
+            @RequestParam String toAccountNumber,
+            @RequestParam Double amount
+    ){
+        accountService.completeTransaction(fromAccountNumber, toAccountNumber, amount);
+        return ResponseEntity.ok().body("transaction successful between "+fromAccountNumber+" and "+toAccountNumber+" accounts");
+    }
+
+    @PutMapping("/deposit")
+    public ResponseEntity<String> deposit(
+            @RequestParam String accountNumber,
+            @RequestParam Double amount
+    ){
+        accountService.deposit(accountNumber, amount);
+        return ResponseEntity.ok().body("Deposit successful");
+    }
+
+    @PutMapping("/withdraw")
+    public ResponseEntity<String> withdraw(
+            @RequestParam String accountNumber,
+            @RequestParam Double amount
+    ){
+        accountService.withdraw(accountNumber, amount);
+        return ResponseEntity.ok().body("Deposit successful");
+    }
 }
